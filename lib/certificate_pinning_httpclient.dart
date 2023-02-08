@@ -13,11 +13,9 @@ class _CertificatePinningService {
   // logging tag
   static const String _tag = "CertificatePinningHttpClient";
 
-  static const MethodChannel _channel =
-      MethodChannel('certificate_pinning_httpclient');
+  static const MethodChannel _channel = MethodChannel('certificate_pinning_httpclient');
 
-  static final Map<String, List<Uint8List>?> _hostCertificates =
-      <String, List<Uint8List>?>{};
+  static final Map<String, List<Uint8List>?> _hostCertificates = <String, List<Uint8List>?>{};
 
   /// Retrieves the certificates in the chain for the specified host. These are obtained at the platform level and we
   /// cache them so subsequent requests don't require another probe.
@@ -31,13 +29,10 @@ class _CertificatePinningService {
         final arguments = <String, String>{
           "url": url.toString(),
         };
-        final List<Object>? fetchedHostCertificates =
-            await _channel.invokeMethod('fetchHostCertificates', arguments);
+        final List<Object?>? fetchedHostCertificates = await _channel.invokeMethod('fetchHostCertificates', arguments);
         if (fetchedHostCertificates?.isNotEmpty ?? false) {
           // cache the obtained host certificates
-          _hostCertificates[url.host] = fetchedHostCertificates
-              ?.map((c) => c as Uint8List)
-              .toList(growable: false);
+          _hostCertificates[url.host] = fetchedHostCertificates?.map((c) => c as Uint8List).toList(growable: false);
         }
       } catch (err) {
         _log.d("$_tag: Error when fetching host certificates: $err");
@@ -55,11 +50,9 @@ class _CertificatePinningService {
   /// @param url of the host that is being pinned
   /// @param validPins is the set of pins for the host
   /// @return a list of host certificates that match the valid pins
-  static Future<List<Uint8List>> _hostPinCertificates(
-      Uri url, Set<String> validPins) async {
+  static Future<List<Uint8List>> _hostPinCertificates(Uri url, Set<String> validPins) async {
     // get certificates for host
-    final hostCertificates =
-        await _CertificatePinningService._getHostCertificates(url);
+    final hostCertificates = await _CertificatePinningService._getHostCertificates(url);
     if (hostCertificates == null) {
       // if there are none then we return an empty list, which will cause a failure when we try and connect
       _log.d("$_tag: Cannot get certificates for $url");
@@ -71,8 +64,7 @@ class _CertificatePinningService {
     bool isFirst = true;
     final List<Uint8List> hostPinCerts = [];
     for (final cert in hostCertificates) {
-      final Uint8List serverSpkiSha256Digest =
-          Uint8List.fromList(_spkiSha256Digest(cert).bytes);
+      final Uint8List serverSpkiSha256Digest = Uint8List.fromList(_spkiSha256Digest(cert).bytes);
       if (!isFirst) info.write(", ");
       isFirst = false;
       info.write(base64.encode(serverSpkiSha256Digest));
@@ -95,23 +87,19 @@ class _CertificatePinningService {
   /// @param url of the host that is being pinned
   /// @param validPins is the set of pins for the host
   /// @return a security context that enforces pinning by using the host certificates that match the pins
-  static Future<SecurityContext> _pinnedSecurityContext(
-      Uri url, Set<String> validPins) async {
+  static Future<SecurityContext> _pinnedSecurityContext(Uri url, Set<String> validPins) async {
     // determine the list of X.509 ASN.1 DER host certificates that match any pins for the host - if this
     // returns an empty list then nothing will be trusted
-    final List<Uint8List> pinCerts =
-        await _CertificatePinningService._hostPinCertificates(url, validPins);
+    final List<Uint8List> pinCerts = await _CertificatePinningService._hostPinCertificates(url, validPins);
 
     // add the certificates to create the security context of trusted certs
     final securityContext = SecurityContext();
     for (final pinCert in pinCerts) {
       final pemCertificate = PemCodec(PemLabel.certificate).encode(pinCert);
-      final Uint8List pemCertificatesBytes =
-          const AsciiEncoder().convert(pemCertificate);
+      final Uint8List pemCertificatesBytes = const AsciiEncoder().convert(pemCertificate);
       securityContext.setTrustedCertificatesBytes(pemCertificatesBytes);
     }
-    _log.d(
-        "$_tag: Pinned security context with ${pinCerts.length} trusted certs, from ${validPins.length} possible pins");
+    _log.d("$_tag: Pinned security context with ${pinCerts.length} trusted certs, from ${validPins.length} possible pins");
     return securityContext;
   }
 
@@ -185,16 +173,13 @@ class CertificatePinningHttpClient implements HttpClient {
 
   // state required to implement getters and setters required by the HttpClient interface
   Future<bool> Function(Uri url, String scheme, String? realm)? _authenticate;
-  Future<ConnectionTask<Socket>> Function(
-      Uri url, String? proxyHost, int? proxyPort)? _connectionFactory;
+  Future<ConnectionTask<Socket>> Function(Uri url, String? proxyHost, int? proxyPort)? _connectionFactory;
   void Function(String line)? _keyLog;
   final List<_Credential> _credentials = [];
   String Function(Uri url)? _findProxy;
-  Future<bool> Function(String host, int port, String scheme, String? realm)?
-      _authenticateProxy;
+  Future<bool> Function(String host, int port, String scheme, String? realm)? _authenticateProxy;
   final List<_ProxyCredential> _proxyCredentials = [];
-  bool Function(X509Certificate cert, String host, int port)?
-      _badCertificateCallback;
+  bool Function(X509Certificate cert, String host, int port)? _badCertificateCallback;
 
   /// Pinning failure callback function for the badCertificateCallback of HttpClient. This is called if the pinning
   /// certificate check failed, which can indicate a certificate update on the server or a Man-in-the-Middle (MitM)
@@ -206,8 +191,7 @@ class CertificatePinningHttpClient implements HttpClient {
   /// @param host is the host name of the server to which the request is being sent
   /// @param port is the port of the server
   bool _pinningFailureCallback(X509Certificate cert, String host, int port) {
-    final Function(X509Certificate cert, String host, int port)?
-        badCertificateCallback = _badCertificateCallback;
+    final Function(X509Certificate cert, String host, int port)? badCertificateCallback = _badCertificateCallback;
     if (badCertificateCallback != null) {
       // call the user defined function for its side effects only (as we are going to reject anyway)
       badCertificateCallback(cert, host, port);
@@ -232,9 +216,7 @@ class CertificatePinningHttpClient implements HttpClient {
       // if there are no pins then we can just use a standard http client
       newHttpClient = HttpClient();
     } else {
-      final securityContext =
-          await _CertificatePinningService._pinnedSecurityContext(
-              url, _validPins);
+      final securityContext = await _CertificatePinningService._pinnedSecurityContext(url, _validPins);
       newHttpClient = HttpClient(context: securityContext);
     }
 
@@ -252,17 +234,13 @@ class CertificatePinningHttpClient implements HttpClient {
     newHttpClient.connectionFactory = _connectionFactory;
     newHttpClient.keyLog = _keyLog;
     for (final credential in _credentials) {
-      newHttpClient.addCredentials(
-          credential.url, credential.realm, credential.credentials);
+      newHttpClient.addCredentials(credential.url, credential.realm, credential.credentials);
     }
     newHttpClient.findProxy = _findProxy;
     newHttpClient.authenticateProxy = _authenticateProxy;
     for (final proxyCredential in _proxyCredentials) {
       newHttpClient.addProxyCredentials(
-          proxyCredential.host,
-          proxyCredential.port,
-          proxyCredential.realm,
-          proxyCredential.credentials);
+          proxyCredential.host, proxyCredential.port, proxyCredential.realm, proxyCredential.credentials);
     }
     newHttpClient.badCertificateCallback = _pinningFailureCallback;
 
@@ -278,8 +256,7 @@ class CertificatePinningHttpClient implements HttpClient {
         super();
 
   @override
-  Future<HttpClientRequest> open(
-      String method, String host, int port, String path) async {
+  Future<HttpClientRequest> open(String method, String host, int port, String path) async {
     // if already closed then just delegate
     if (_isClosed) {
       return _delegatePinnedHttpClient.open(method, host, port, path);
@@ -318,96 +295,79 @@ class CertificatePinningHttpClient implements HttpClient {
   }
 
   @override
-  Future<HttpClientRequest> get(String host, int port, String path) =>
-      open("get", host, port, path);
+  Future<HttpClientRequest> get(String host, int port, String path) => open("get", host, port, path);
 
   @override
   Future<HttpClientRequest> getUrl(Uri url) => openUrl("get", url);
 
   @override
-  Future<HttpClientRequest> post(String host, int port, String path) =>
-      open("post", host, port, path);
+  Future<HttpClientRequest> post(String host, int port, String path) => open("post", host, port, path);
 
   @override
   Future<HttpClientRequest> postUrl(Uri url) => openUrl("post", url);
 
   @override
-  Future<HttpClientRequest> put(String host, int port, String path) =>
-      open("put", host, port, path);
+  Future<HttpClientRequest> put(String host, int port, String path) => open("put", host, port, path);
 
   @override
   Future<HttpClientRequest> putUrl(Uri url) => openUrl("put", url);
 
   @override
-  Future<HttpClientRequest> delete(String host, int port, String path) =>
-      open("delete", host, port, path);
+  Future<HttpClientRequest> delete(String host, int port, String path) => open("delete", host, port, path);
 
   @override
   Future<HttpClientRequest> deleteUrl(Uri url) => openUrl("delete", url);
 
   @override
-  Future<HttpClientRequest> head(String host, int port, String path) =>
-      open("head", host, port, path);
+  Future<HttpClientRequest> head(String host, int port, String path) => open("head", host, port, path);
 
   @override
   Future<HttpClientRequest> headUrl(Uri url) => openUrl("head", url);
 
   @override
-  Future<HttpClientRequest> patch(String host, int port, String path) =>
-      open("patch", host, port, path);
+  Future<HttpClientRequest> patch(String host, int port, String path) => open("patch", host, port, path);
 
   @override
   Future<HttpClientRequest> patchUrl(Uri url) => openUrl("patch", url);
 
   @override
-  set idleTimeout(Duration timeout) =>
-      _delegatePinnedHttpClient.idleTimeout = timeout;
+  set idleTimeout(Duration timeout) => _delegatePinnedHttpClient.idleTimeout = timeout;
 
   @override
   Duration get idleTimeout => _delegatePinnedHttpClient.idleTimeout;
 
   @override
-  set connectionTimeout(Duration? timeout) =>
-      _delegatePinnedHttpClient.connectionTimeout = timeout;
+  set connectionTimeout(Duration? timeout) => _delegatePinnedHttpClient.connectionTimeout = timeout;
 
   @override
-  Duration? get connectionTimeout =>
-      _delegatePinnedHttpClient.connectionTimeout;
+  Duration? get connectionTimeout => _delegatePinnedHttpClient.connectionTimeout;
 
   @override
-  set maxConnectionsPerHost(int? maxConnections) =>
-      _delegatePinnedHttpClient.maxConnectionsPerHost = maxConnections;
+  set maxConnectionsPerHost(int? maxConnections) => _delegatePinnedHttpClient.maxConnectionsPerHost = maxConnections;
 
   @override
-  int? get maxConnectionsPerHost =>
-      _delegatePinnedHttpClient.maxConnectionsPerHost;
+  int? get maxConnectionsPerHost => _delegatePinnedHttpClient.maxConnectionsPerHost;
 
   @override
-  set autoUncompress(bool autoUncompress) =>
-      _delegatePinnedHttpClient.autoUncompress = autoUncompress;
+  set autoUncompress(bool autoUncompress) => _delegatePinnedHttpClient.autoUncompress = autoUncompress;
 
   @override
   bool get autoUncompress => _delegatePinnedHttpClient.autoUncompress;
 
   @override
-  set userAgent(String? userAgent) =>
-      _delegatePinnedHttpClient.userAgent = userAgent;
+  set userAgent(String? userAgent) => _delegatePinnedHttpClient.userAgent = userAgent;
 
   @override
   String? get userAgent => _delegatePinnedHttpClient.userAgent;
 
   @override
-  set authenticate(
-      Future<bool> Function(Uri url, String scheme, String? realm)? f) {
+  set authenticate(Future<bool> Function(Uri url, String scheme, String? realm)? f) {
     _authenticate = f;
     _delegatePinnedHttpClient.authenticate = f;
   }
 
   @override
-  set connectionFactory(
-      Future<ConnectionTask<Socket>> Function(
-              Uri url, String? proxyHost, int? proxyPort)?
-          f) {
+  set connectionFactory(Future<ConnectionTask<Socket>> Function(Uri url, String? proxyHost, int? proxyPort)? f) {
     _connectionFactory = f;
     _delegatePinnedHttpClient.connectionFactory = f;
   }
@@ -419,8 +379,7 @@ class CertificatePinningHttpClient implements HttpClient {
   }
 
   @override
-  void addCredentials(
-      Uri url, String realm, HttpClientCredentials credentials) {
+  void addCredentials(Uri url, String realm, HttpClientCredentials credentials) {
     _credentials.add(_Credential(url, realm, credentials));
     _delegatePinnedHttpClient.addCredentials(url, realm, credentials);
   }
@@ -432,26 +391,20 @@ class CertificatePinningHttpClient implements HttpClient {
   }
 
   @override
-  set authenticateProxy(
-      Future<bool> Function(
-              String host, int port, String scheme, String? realm)?
-          f) {
+  set authenticateProxy(Future<bool> Function(String host, int port, String scheme, String? realm)? f) {
     _authenticateProxy = f;
     _delegatePinnedHttpClient.authenticateProxy = f;
   }
 
   @override
-  void addProxyCredentials(
-      String host, int port, String realm, HttpClientCredentials credentials) {
+  void addProxyCredentials(String host, int port, String realm, HttpClientCredentials credentials) {
     _proxyCredentials.add(_ProxyCredential(host, port, realm, credentials));
-    _delegatePinnedHttpClient.addProxyCredentials(
-        host, port, realm, credentials);
+    _delegatePinnedHttpClient.addProxyCredentials(host, port, realm, credentials);
   }
 
   /// This callback will be invoked, but CertificatePinningHttpClient will not use the return value.
   @override
-  set badCertificateCallback(
-      bool Function(X509Certificate cert, String host, int port)? callback) {
+  set badCertificateCallback(bool Function(X509Certificate cert, String host, int port)? callback) {
     _badCertificateCallback = callback;
   }
 
